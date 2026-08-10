@@ -1,0 +1,4 @@
+interface:
+  display_name: "My Agent Web Dev"
+  short_description: "调试 my-agent API 与 Vue 前端联调"
+  default_prompt: "Use $my-agent-web-dev to wire or debug my-agent-web against the my-agent FastAPI backend."
