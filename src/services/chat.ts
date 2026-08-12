@@ -1,10 +1,23 @@
 import { requestJson, requestStream } from './api'
 
+export type WebToolCall = {
+  name: string
+  args: Record<string, unknown>
+}
+
+export type WebConfirmation = {
+  type: 'web_confirmation'
+  message: string
+  tool_calls: WebToolCall[]
+}
+
 export type ChatResponse = {
   reply: string
   thread_id: string
-  tool_calls: Array<Record<string, unknown>>
+  tool_calls: WebToolCall[]
   history_saved: boolean
+  status: 'completed' | 'requires_confirmation'
+  confirmation: WebConfirmation | null
 }
 
 export type ChatSession = {
@@ -27,14 +40,9 @@ export type ChatHistoryMessage = {
 
 export type ChatStreamEvent =
   | { type: 'token'; content: string }
-  | {
-      type: 'done'
-      reply: string
-      thread_id: string
-      tool_calls: Array<Record<string, unknown>>
-      history_saved: boolean
-    }
-  | { type: 'error'; message: string }
+  | ({ type: 'confirmation' } & ChatResponse)
+  | ({ type: 'done' } & ChatResponse)
+  | { type: 'error'; code?: string; message: string }
 
 export function sendChatMessage(message: string, threadId?: string) {
   return requestJson<ChatResponse>('/chat', {
@@ -42,6 +50,16 @@ export function sendChatMessage(message: string, threadId?: string) {
     body: {
       message,
       ...(threadId ? { thread_id: threadId } : {}),
+    },
+  })
+}
+
+export function confirmWebAccess(threadId: string, approved: boolean) {
+  return requestJson<ChatResponse>('/chat/confirm', {
+    method: 'POST',
+    body: {
+      thread_id: threadId,
+      approved,
     },
   })
 }

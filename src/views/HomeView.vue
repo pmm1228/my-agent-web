@@ -5,13 +5,18 @@ import { useRouter } from 'vue-router'
 import { confirmAction } from '@/components/common/confirm/confirm'
 import { ApiError } from '@/services/api'
 import {
+  confirmWebAccess,
   deleteChatSession,
   listChatMessages,
   listChatSessions,
   streamChatMessage,
+  type ChatResponse,
   type ChatSession,
+  type WebConfirmation,
+  type WebToolCall,
 } from '@/services/chat'
 import { useAuthStore } from '@/stores/auth'
+import { renderMarkdown } from '@/utils/markdown'
 
 interface ChatMessage {
   id: number
@@ -35,6 +40,13 @@ const deletingThreadId = ref<string>()
 let nextMessageId = 1
 
 const quickPrompts = ['介绍一下 myAgent', '数据库怎么用']
+
+const webToolLabels: Record<string, string> = {
+  search_web: '搜索互联网',
+  fetch_webpage: '读取网页内容',
+  get_weather: '查询实时天气',
+  get_typhoon: '查询台风信息',
+}
 
 function formatTime(date: Date | string = new Date()) {
   const value = typeof date === 'string' ? new Date(date) : date
@@ -83,6 +95,43 @@ function toErrorMessage(error: unknown) {
   }
 
   return '发送失败，请稍后重试'
+}
+
+function formatToolCall(toolCall: WebToolCall) {
+  const label = webToolLabels[toolCall.name] || toolCall.name
+  const details = Object.values(toolCall.args)
+    .filter((value) => typeof value === 'string' || typeof value === 'number')
+    .map(String)
+    .filter(Boolean)
+    .join('，')
+
+  return details ? `${label}：${details}` : label
+}
+
+async function requestWebConfirmation(confirmation: WebConfirmation) {
+  const toolSummary = confirmation.tool_calls.map(formatToolCall).join('\n')
+  return confirmAction({
+    title: '允许访问互联网？',
+    message: toolSummary ? `${confirmation.message}\n\n${toolSummary}` : confirmation.message,
+    type: 'warning',
+    confirmText: '允许',
+    cancelText: '不允许',
+  })
+}
+
+async function resolveConfirmations(result: ChatResponse): Promise<ChatResponse> {
+  let current = result
+
+  while (current.status === 'requires_confirmation' && current.confirmation) {
+    const approved = await requestWebConfirmation(current.confirmation)
+    current = await confirmWebAccess(current.thread_id, approved)
+  }
+
+  if (current.status !== 'completed') {
+    throw new Error('联网确认状态异常，请重新发送消息')
+  }
+
+  return current
 }
 
 async function loadConversations() {
@@ -181,6 +230,14 @@ async function handleSend(message = draft.value) {
         threadId.value = event.thread_id
         if (!typingMessage.content) {
           typingMessage.content = event.reply
+        }
+        completed = true
+      } else if (event.type === 'confirmation') {
+        threadId.value = event.thread_id
+        const result = await resolveConfirmations(event)
+        threadId.value = result.thread_id
+        if (result.reply) {
+          typingMessage.content = result.reply
         }
         completed = true
       } else {
@@ -384,6 +441,11 @@ async function handleLogout() {
                   <span />
                   <span />
                 </div>
+                <div
+                  v-else-if="message.role === 'assistant'"
+                  class="msg__bubble msg__markdown"
+                  v-html="renderMarkdown(message.content)"
+                />
                 <div v-else class="msg__bubble msg__bubble--plain">{{ message.content }}</div>
                 <time class="msg__time">{{ message.time }}</time>
               </div>
@@ -982,6 +1044,124 @@ async function handleLogout() {
 
 .msg__bubble--plain {
   white-space: pre-wrap;
+}
+
+.msg__markdown {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.msg__markdown :deep(p) {
+  margin: 0 0 0.6em;
+}
+
+.msg__markdown :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.msg__markdown :deep(h1),
+.msg__markdown :deep(h2),
+.msg__markdown :deep(h3) {
+  margin: 0.8em 0 0.4em;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.msg__markdown :deep(h1) {
+  font-size: 18px;
+}
+
+.msg__markdown :deep(h2) {
+  font-size: 16px;
+}
+
+.msg__markdown :deep(h3) {
+  font-size: 15px;
+}
+
+.msg__markdown :deep(ul),
+.msg__markdown :deep(ol) {
+  margin: 0.4em 0 0.6em;
+  padding-left: 1.4em;
+}
+
+.msg__markdown :deep(li) {
+  margin: 0.15em 0;
+}
+
+.msg__markdown :deep(blockquote) {
+  margin: 0.5em 0;
+  padding: 0.3em 0.8em;
+  border-left: 3px solid var(--chat-muted);
+  color: var(--chat-sub);
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 0 6px 6px 0;
+}
+
+.msg__markdown :deep(code) {
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.07);
+  font-size: 0.9em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.msg__markdown :deep(pre) {
+  margin: 0.6em 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #1d1d1f;
+  color: #f5f5f7;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.msg__markdown :deep(pre code) {
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+  border-radius: 0;
+}
+
+.msg__markdown :deep(a) {
+  color: var(--chat-blue);
+  text-decoration: none;
+}
+
+.msg__markdown :deep(a:hover) {
+  text-decoration: underline;
+}
+
+.msg__markdown :deep(table) {
+  width: 100%;
+  margin: 0.5em 0;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.msg__markdown :deep(th),
+.msg__markdown :deep(td) {
+  padding: 8px 12px;
+  border: 1px solid var(--chat-line);
+  text-align: left;
+}
+
+.msg__markdown :deep(th) {
+  background: rgba(0, 0, 0, 0.04);
+  font-weight: 600;
+}
+
+.msg__markdown :deep(hr) {
+  margin: 1em 0;
+  border: 0;
+  border-top: 1px solid var(--chat-line);
+}
+
+.msg__markdown :deep(img) {
+  max-width: 100%;
+  border-radius: 8px;
 }
 
 .msg--assistant .msg__bubble {

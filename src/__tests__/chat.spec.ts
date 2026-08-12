@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setAuthToken } from '../services/api'
-import { deleteChatSession, sendChatMessage, streamChatMessage } from '../services/chat'
+import {
+  confirmWebAccess,
+  deleteChatSession,
+  sendChatMessage,
+  streamChatMessage,
+} from '../services/chat'
 
 describe('chat service', () => {
   beforeEach(() => {
@@ -15,15 +20,18 @@ describe('chat service', () => {
       expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer test-access-token')
       expect(init?.body).toBe(JSON.stringify({ message: '你好', thread_id: 'thread-1' }))
 
-      return new Response(JSON.stringify({
-        reply: '你好！',
-        thread_id: 'thread-1',
-        tool_calls: [],
-        history_saved: true,
-      }), {
-        headers: { 'Content-Type': 'application/json' },
-        status: 200,
-      })
+      return new Response(
+        JSON.stringify({
+          reply: '你好！',
+          thread_id: 'thread-1',
+          tool_calls: [],
+          history_saved: true,
+        }),
+        {
+          headers: { 'Content-Type': 'application/json' },
+          status: 200,
+        },
+      )
     })
     vi.stubGlobal('fetch', fetchMock)
 
@@ -37,16 +45,26 @@ describe('chat service', () => {
     const encoder = new TextEncoder()
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => new Response(new ReadableStream({
-        start(controller) {
-          controller.enqueue(encoder.encode('{"type":"token","content":"你"}\n{"type":"tok'))
-          controller.enqueue(encoder.encode('en","content":"好"}\n{"type":"done","reply":"你好","thread_id":"thread-1","tool_calls":[],"history_saved":true}\n'))
-          controller.close()
-        },
-      }), {
-        headers: { 'Content-Type': 'application/x-ndjson' },
-        status: 200,
-      })),
+      vi.fn(
+        async () =>
+          new Response(
+            new ReadableStream({
+              start(controller) {
+                controller.enqueue(encoder.encode('{"type":"token","content":"你"}\n{"type":"tok'))
+                controller.enqueue(
+                  encoder.encode(
+                    'en","content":"好"}\n{"type":"done","reply":"你好","thread_id":"thread-1","tool_calls":[],"history_saved":true}\n',
+                  ),
+                )
+                controller.close()
+              },
+            }),
+            {
+              headers: { 'Content-Type': 'application/x-ndjson' },
+              status: 200,
+            },
+          ),
+      ),
     )
 
     const events = []
@@ -59,6 +77,35 @@ describe('chat service', () => {
       { type: 'token', content: '好' },
       { type: 'done', reply: '你好', thread_id: 'thread-1', tool_calls: [], history_saved: true },
     ])
+  })
+
+  it('submits the web access decision for the active thread', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toBe('http://localhost:8000/chat/confirm')
+      expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer test-access-token')
+      expect(init?.body).toBe(JSON.stringify({ thread_id: 'thread-1', approved: false }))
+
+      return new Response(
+        JSON.stringify({
+          reply: '我无法核实实时信息。',
+          thread_id: 'thread-1',
+          tool_calls: [],
+          history_saved: true,
+          status: 'completed',
+          confirmation: null,
+        }),
+        {
+          headers: { 'Content-Type': 'application/json' },
+          status: 200,
+        },
+      )
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(confirmWebAccess('thread-1', false)).resolves.toMatchObject({
+      status: 'completed',
+      reply: '我无法核实实时信息。',
+    })
   })
 
   it('deletes a chat session with bearer authentication', async () => {
