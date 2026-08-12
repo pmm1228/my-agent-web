@@ -93,3 +93,10 @@ export function listChatMessages(threadId: string) {
     `/chat/sessions/${encodeURIComponent(threadId)}/messages`,
   )
 }
+
+export function deleteChatSession(threadId: string) {
+  return requestJson<{ deleted: boolean; thread_id: string }>(
+    `/chat/sessions/${encodeURIComponent(threadId)}`,
+    { method: 'DELETE' },
+  )
+}

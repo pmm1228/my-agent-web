@@ -230,6 +230,26 @@ Response:
 
 Frontend use: load selected conversation.
 
+### Delete Chat Session
+
+```http
+DELETE /chat/sessions/{thread_id}
+```
+
+Auth: user. The backend only deletes a session owned by the current user.
+
+Response:
+
+```json
+{
+  "deleted": true,
+  "thread_id": "thread-id"
+}
+```
+
+Deleting a session also deletes its messages through the database cascade and removes the
+user-scoped Agent checkpoint context. A missing session returns `404`.
+
 ### Create User
 
 ```http

@@ -21,13 +21,12 @@ Implemented:
 - Pinia auth store persists `{ apiKey, user }` in `localStorage` under `my-agent-web.auth`.
 - Router redirects unauthenticated users to `/login`.
 - Login page validates an API key through `GET /me`.
+- Chat services support JSON, NDJSON streaming, session history, and session deletion.
+- Destructive confirmation dialogs use `ElMessageBox.confirm` from Element Plus.
 
 Not yet implemented:
 
-- Typed chat service functions for `/chat`, `/chat/sessions`, and message history.
-- Reactive chat state in `HomeView.vue`; it currently uses static sample conversations/messages.
 - Admin user management UI and service functions for `/users`.
-- Streaming chat; backend currently exposes regular JSON responses only in this project.
 
 ## Recommended Service Layout
 
@@ -134,6 +133,15 @@ When replacing static state in `HomeView.vue`:
    persistence.
 8. On selecting a sidebar session, call `/chat/sessions/{thread_id}/messages` and map backend roles
    to the visible message list.
+9. Confirm deletion with `ElMessageBox.confirm`, then call `DELETE /chat/sessions/{thread_id}`.
+
+## Element Plus Interaction Rules
+
+Import the required Element Plus theme files once in `src/main.ts`; avoid loading the full theme
+for a small component subset. Import functions such as `ElMessageBox` directly where they are
+used. For destructive actions, provide explicit Chinese button labels, use warning/danger
+styling, and treat cancellation as a no-op. Do not use browser native `window.alert`,
+`window.confirm`, or `window.prompt`.
 
 ## Local Debug Checklist
 

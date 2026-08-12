@@ -1,4 +1,4 @@
 interface:
   display_name: "My Agent Web Dev"
-  short_description: "调试 my-agent API 与 Vue 前端联调"
-  default_prompt: "Use $my-agent-web-dev to wire or debug my-agent-web against the my-agent FastAPI backend."
+  short_description: "联调 FastAPI、Vue 与 Element Plus Web 交互"
+  default_prompt: "Use $my-agent-web-dev to build or debug the my-agent Vue frontend and its Element Plus interactions."

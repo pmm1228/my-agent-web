@@ -1,6 +1,6 @@
 ---
 name: my-agent-web-dev
-description: Develop, debug, and wire the my-agent-web Vue frontend against the sibling my-agent FastAPI backend. Use when working on my-agent-web API clients, auth/login, chat UI integration, chat history, admin user management, VITE_API_BASE_URL configuration, local backend smoke tests, or requests to check the my-agent HTTP interface contract.
+description: Develop, debug, and wire the my-agent-web Vue frontend against the sibling my-agent FastAPI backend. Use when working on my-agent-web API clients, auth/login, chat UI integration, chat history, Element Plus UI interactions, dialogs and feedback, admin user management, VITE_API_BASE_URL configuration, local backend smoke tests, or requests to check the my-agent HTTP interface contract.
 ---
 
 # My Agent Web Dev
@@ -31,8 +31,22 @@ secrets. Use placeholders such as `<USER_API_KEY>` and environment variables suc
 1. Identify whether the task touches backend contract, frontend client code, or local debugging.
 2. For API contract work, read `references/api-map.md`.
 3. For Vue integration work, read `references/frontend-flow.md`.
-4. When verifying a running backend, use `scripts/probe-api.mjs` with environment variables.
-5. After backend route or schema changes, update `references/api-map.md`.
+4. For dialogs, confirmations, notifications, and other standard interactions, use Element Plus.
+5. When verifying a running backend, use `scripts/probe-api.mjs` with environment variables.
+6. After backend route or schema changes, update `references/api-map.md`.
+
+## UI Component Rules
+
+- Reuse `element-plus`, which is already a project dependency.
+- Use `ElMessageBox.confirm` for destructive-action confirmation; set explicit Chinese title,
+  confirm text, cancel text, and warning/danger styling.
+- Use Element Plus feedback components for standard messages and dialogs. Do not introduce
+  native `alert`, `confirm`, or `prompt` calls.
+- Import required Element Plus theme files once from `src/main.ts`; do not repeat component CSS
+  imports or load the full theme when only a small component subset is used.
+- Keep business state and API calls in Vue code. Treat dismissal as a normal return path and do
+  not display it as an error.
+- Preserve accessibility: keep descriptive `aria-label` and `title` text on icon-only buttons.
 
 ## Common Tasks
 

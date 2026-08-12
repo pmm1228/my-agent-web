@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setAuthToken } from '../services/api'
-import { sendChatMessage, streamChatMessage } from '../services/chat'
+import { deleteChatSession, sendChatMessage, streamChatMessage } from '../services/chat'
 
 describe('chat service', () => {
   beforeEach(() => {
@@ -59,5 +59,22 @@ describe('chat service', () => {
       { type: 'token', content: '好' },
       { type: 'done', reply: '你好', thread_id: 'thread-1', tool_calls: [], history_saved: true },
     ])
+  })
+
+  it('deletes a chat session with bearer authentication', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toBe('http://localhost:8000/chat/sessions/thread-1')
+      expect(init?.method).toBe('DELETE')
+      expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer test-access-token')
+      return new Response(JSON.stringify({ deleted: true, thread_id: 'thread-1' }), {
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(deleteChatSession('thread-1')).resolves.toEqual({
+      deleted: true,
+      thread_id: 'thread-1',
+    })
   })
 })

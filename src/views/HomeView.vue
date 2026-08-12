@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessageBox } from 'element-plus'
 
 import { ApiError } from '@/services/api'
 import {
+  deleteChatSession,
   listChatMessages,
   listChatSessions,
   streamChatMessage,
@@ -29,6 +31,7 @@ const errorMessage = ref('')
 const messagesContainer = ref<HTMLElement>()
 const conversations = ref<ChatSession[]>([])
 const isLoadingConversations = ref(false)
+const deletingThreadId = ref<string>()
 let nextMessageId = 1
 
 const quickPrompts = ['介绍一下 myAgent', '数据库怎么用']
@@ -95,7 +98,7 @@ async function loadConversations() {
 }
 
 async function openConversation(conversation: ChatSession) {
-  if (isSending.value || conversation.thread_id === threadId.value) {
+  if (isSending.value || deletingThreadId.value || conversation.thread_id === threadId.value) {
     return
   }
 
@@ -116,6 +119,44 @@ async function openConversation(conversation: ChatSession) {
     await scrollToLatestMessage()
   } catch (error) {
     errorMessage.value = toErrorMessage(error)
+  }
+}
+
+async function handleDeleteConversation(conversation: ChatSession) {
+  if (isSending.value || deletingThreadId.value) {
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      `确定删除“${conversation.title || '新对话'}”吗？删除后无法恢复。`,
+      '删除历史对话',
+      {
+        type: 'warning',
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        confirmButtonClass: 'el-button--danger',
+        autofocus: false,
+      },
+    )
+  } catch {
+    return
+  }
+
+  errorMessage.value = ''
+  deletingThreadId.value = conversation.thread_id
+  try {
+    await deleteChatSession(conversation.thread_id)
+    conversations.value = conversations.value.filter(
+      (item) => item.thread_id !== conversation.thread_id,
+    )
+    if (threadId.value === conversation.thread_id) {
+      startNewChat()
+    }
+  } catch (error) {
+    errorMessage.value = toErrorMessage(error)
+  } finally {
+    deletingThreadId.value = undefined
   }
 }
 
@@ -228,12 +269,15 @@ async function handleLogout() {
               v-for="conversation in conversations"
               :key="conversation.thread_id"
               class="conversation-row"
-              :class="{ 'conversation-row--active': conversation.thread_id === threadId }"
+              :class="{
+                'conversation-row--active': conversation.thread_id === threadId,
+                'conversation-row--deleting': conversation.thread_id === deletingThreadId,
+              }"
             >
               <button
                 class="conversation"
                 type="button"
-                :disabled="isSending"
+                :disabled="isSending || Boolean(deletingThreadId)"
                 @click="openConversation(conversation)"
               >
                 <span class="conversation__avatar" aria-hidden="true">
@@ -250,6 +294,18 @@ async function handleLogout() {
                   class="status-dot"
                   title="当前对话"
                 />
+              </button>
+              <button
+                class="conversation__delete"
+                type="button"
+                :aria-label="`删除对话：${conversation.title || '新对话'}`"
+                title="删除历史对话"
+                :disabled="isSending || Boolean(deletingThreadId)"
+                @click="handleDeleteConversation(conversation)"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
               </button>
             </div>
             <p v-if="!conversations.length" class="conversation-empty">暂无历史对话</p>
@@ -586,19 +642,56 @@ async function handleLogout() {
   background: rgba(0, 122, 255, 0.1);
 }
 
+.conversation-row--deleting {
+  opacity: 0.55;
+}
+
 .conversation {
   display: flex;
   flex: 1;
   align-items: center;
   gap: 10px;
   min-width: 0;
-  padding: 10px 10px 10px 12px;
+  padding: 10px 6px 10px 12px;
   border: 0;
   border-radius: 12px;
   background: transparent;
   color: var(--chat-sub);
   text-align: left;
   cursor: pointer;
+}
+
+.conversation__delete {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  margin-right: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--chat-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+}
+
+.conversation-row:hover .conversation__delete,
+.conversation-row--active .conversation__delete,
+.conversation__delete:focus-visible {
+  opacity: 1;
+}
+
+.conversation__delete:hover:not(:disabled) {
+  background: rgba(255, 59, 48, 0.12);
+  color: #ff3b30;
+}
+
+.conversation__delete:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
 }
 
 .conversation:disabled {
@@ -802,6 +895,10 @@ async function handleLogout() {
 
 .toolbar__new:active {
   transform: scale(0.96);
+}
+
+.toolbar__new-text {
+  font-size: 14px;
 }
 
 .messages {
