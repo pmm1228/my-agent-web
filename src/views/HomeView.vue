@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
 
+import { confirmAction } from '@/components/common/confirm/confirm'
 import { ApiError } from '@/services/api'
 import {
   deleteChatSession,
@@ -127,19 +127,14 @@ async function handleDeleteConversation(conversation: ChatSession) {
     return
   }
 
-  try {
-    await ElMessageBox.confirm(
-      `确定删除“${conversation.title || '新对话'}”吗？删除后无法恢复。`,
-      '删除历史对话',
-      {
-        type: 'warning',
-        confirmButtonText: '删除',
-        cancelButtonText: '取消',
-        confirmButtonClass: 'el-button--danger',
-        autofocus: false,
-      },
-    )
-  } catch {
+  const confirmed = await confirmAction({
+    title: '删除历史对话',
+    message: `确定删除“${conversation.title || '新对话'}”吗？删除后无法恢复。`,
+    type: 'danger',
+    confirmText: '删除',
+  })
+
+  if (!confirmed) {
     return
   }
 
@@ -304,7 +299,13 @@ async function handleLogout() {
                 @click="handleDeleteConversation(conversation)"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                  <path
+                    d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
                 </svg>
               </button>
             </div>
@@ -441,18 +442,18 @@ async function handleLogout() {
 
 <style scoped>
 .workspace {
-  --chat-bg: #d7d8dc;
-  --chat-sidebar: rgba(255, 255, 255, 0.58);
-  --chat-panel: rgba(255, 255, 255, 0.8);
-  --chat-text: #1d1d1f;
-  --chat-sub: #6e6e73;
-  --chat-muted: #aeaeb2;
-  --chat-line: rgba(0, 0, 0, 0.08);
-  --chat-blue: #007aff;
-  --chat-blue-soft: rgba(0, 122, 255, 0.12);
-  --chat-agent-bubble: #f2f2f7;
-  --chat-green: #34c759;
-  --chat-shadow: 0 22px 70px rgba(0, 0, 0, 0.14);
+  --chat-bg: var(--color-page-background);
+  --chat-sidebar: var(--color-surface-glass);
+  --chat-panel: var(--color-surface-panel);
+  --chat-text: var(--color-text);
+  --chat-sub: var(--color-text-secondary);
+  --chat-muted: var(--color-text-muted);
+  --chat-line: var(--color-border);
+  --chat-blue: var(--color-primary);
+  --chat-blue-soft: var(--color-primary-soft);
+  --chat-agent-bubble: var(--color-agent-bubble);
+  --chat-green: var(--color-success);
+  --chat-shadow: var(--shadow-panel);
   --chat-shell-width: min(100%, 980px);
   --chat-shell-height: min(100%, 700px);
   --chat-sidebar-width: 260px;
@@ -465,13 +466,12 @@ async function handleLogout() {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  padding: 28px;
+  padding: var(--page-padding);
   background:
     linear-gradient(135deg, rgba(116, 159, 255, 0.2), transparent 36%),
     linear-gradient(315deg, rgba(255, 159, 120, 0.2), transparent 40%), var(--chat-bg);
   color: var(--chat-text);
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', sans-serif;
+  font-family: var(--font-family-system);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -495,7 +495,7 @@ async function handleLogout() {
   grid-template-columns: var(--chat-sidebar-width) 1fr;
   overflow: hidden;
   border: 0.5px solid rgba(255, 255, 255, 0.72);
-  border-radius: 18px;
+  border-radius: var(--radius-panel);
   background: rgba(255, 255, 255, 0.32);
   box-shadow: var(--chat-shadow);
   backdrop-filter: blur(48px) saturate(190%);
@@ -515,9 +515,9 @@ async function handleLogout() {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
-  padding: 22px 18px 10px;
+  padding: 22px 18px var(--space-2);
 }
 
 .sidebar__logo {
@@ -545,11 +545,11 @@ async function handleLogout() {
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
-  padding: 3px 8px;
-  border-radius: 999px;
+  padding: 3px var(--space-2);
+  border-radius: var(--radius-pill);
   background: var(--chat-blue-soft);
   color: var(--chat-blue);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-weight: 600;
   line-height: 1.35;
 }
@@ -559,15 +559,15 @@ async function handleLogout() {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
-  margin: 0 14px 12px;
+  margin: 0 14px var(--space-3);
   padding: 10px 14px;
   border: 0.5px solid rgba(0, 122, 255, 0.18);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.72);
   color: var(--chat-blue);
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 600;
   cursor: pointer;
   transition:
@@ -598,16 +598,16 @@ async function handleLogout() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 18px 8px;
+  padding: var(--space-1) 18px var(--space-2);
   color: var(--chat-muted);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-weight: 600;
 }
 
 .history-heading__count {
   min-width: 18px;
   padding: 1px 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(0, 122, 255, 0.1);
   color: var(--chat-blue);
   text-align: center;
@@ -618,13 +618,13 @@ async function handleLogout() {
   display: grid;
   place-items: center;
   color: var(--chat-muted);
-  font-size: 13px;
+  font-size: var(--font-size-caption);
 }
 
 .conversation-list {
   flex: 1;
   min-height: 0;
-  padding: 0 0 8px;
+  padding: 0 0 var(--space-2);
 }
 
 .conversation-row {
@@ -632,8 +632,8 @@ async function handleLogout() {
   align-items: center;
   width: calc(100% - 20px);
   min-width: 0;
-  margin: 0 10px 4px;
-  border-radius: 12px;
+  margin: 0 10px var(--space-1);
+  border-radius: var(--radius-md);
   transition: background 0.15s ease;
 }
 
@@ -654,7 +654,7 @@ async function handleLogout() {
   min-width: 0;
   padding: 10px 6px 10px 12px;
   border: 0;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--chat-sub);
   text-align: left;
@@ -675,7 +675,10 @@ async function handleLogout() {
   color: var(--chat-muted);
   cursor: pointer;
   opacity: 0;
-  transition: color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease,
+    opacity 0.15s ease;
 }
 
 .conversation-row:hover .conversation__delete,
@@ -704,7 +707,7 @@ async function handleLogout() {
   display: grid;
   flex-shrink: 0;
   place-items: center;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.95);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
 }
@@ -726,13 +729,13 @@ async function handleLogout() {
 
 .conversation__name {
   color: var(--chat-text);
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 600;
 }
 
 .conversation__preview {
   color: var(--chat-muted);
-  font-size: 12px;
+  font-size: var(--font-size-sm);
 }
 
 .status-dot {
@@ -745,9 +748,9 @@ async function handleLogout() {
 }
 
 .conversation-empty {
-  margin: 8px 10px;
+  margin: var(--space-2) 10px;
   color: var(--chat-muted);
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   text-align: center;
 }
 
@@ -774,7 +777,7 @@ async function handleLogout() {
   border-radius: 50%;
   background: linear-gradient(180deg, #0a84ff, #007aff);
   color: #fff;
-  font-size: 13px;
+  font-size: var(--font-size-caption);
   font-weight: 700;
   box-shadow: 0 3px 10px rgba(0, 122, 255, 0.24);
 }
@@ -790,7 +793,7 @@ async function handleLogout() {
 .user-card__name {
   overflow: hidden;
   color: var(--chat-text);
-  font-size: 13px;
+  font-size: var(--font-size-caption);
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -798,7 +801,7 @@ async function handleLogout() {
 
 .user-card__status {
   color: var(--chat-green);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
 }
 
 .logout-btn {
@@ -851,7 +854,7 @@ async function handleLogout() {
 .toolbar__name {
   overflow: hidden;
   color: var(--chat-text);
-  font-size: 13px;
+  font-size: var(--font-size-caption);
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -859,7 +862,7 @@ async function handleLogout() {
 
 .toolbar__status {
   color: var(--chat-sub);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
 }
 
 .toolbar__status--online {
@@ -876,12 +879,12 @@ async function handleLogout() {
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
-  padding: 6px 12px;
+  padding: 6px var(--space-3);
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--chat-blue-soft);
   color: var(--chat-blue);
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   font-weight: 600;
   cursor: pointer;
   transition:
@@ -898,7 +901,7 @@ async function handleLogout() {
 }
 
 .toolbar__new-text {
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 
 .messages {
@@ -910,7 +913,7 @@ async function handleLogout() {
   display: flex;
   flex-direction: column;
   gap: 18px;
-  padding: 24px 28px 12px;
+  padding: var(--space-6) var(--space-7) var(--space-3);
 }
 
 .day-divider {
@@ -919,11 +922,11 @@ async function handleLogout() {
 }
 
 .day-divider span {
-  padding: 4px 12px;
-  border-radius: 999px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
   background: rgba(0, 0, 0, 0.04);
   color: var(--chat-muted);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-weight: 500;
   line-height: 1.35;
 }
@@ -945,7 +948,7 @@ async function handleLogout() {
   flex-shrink: 0;
   place-items: center;
   margin-top: 18px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: rgba(255, 255, 255, 0.95);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
@@ -962,14 +965,14 @@ async function handleLogout() {
 }
 
 .msg__sender {
-  padding-left: 4px;
+  padding-left: var(--space-1);
   color: var(--chat-muted);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-weight: 600;
 }
 
 .msg__bubble {
-  padding: 12px 16px;
+  padding: var(--space-3) var(--space-4);
   border-radius: 20px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
   font-size: 15px;
@@ -995,9 +998,9 @@ async function handleLogout() {
 }
 
 .msg__time {
-  padding: 0 4px;
+  padding: 0 var(--space-1);
   color: var(--chat-muted);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
 }
 
 .msg__bubble--typing {
@@ -1025,7 +1028,7 @@ async function handleLogout() {
 
 .composer {
   flex-shrink: 0;
-  padding: 14px 20px 18px;
+  padding: 14px var(--space-5) 18px;
   border-top: 0.5px solid var(--chat-line);
   background: rgba(255, 255, 255, 0.55);
 }
@@ -1033,25 +1036,25 @@ async function handleLogout() {
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
 .chat-error {
   margin: 0 0 10px;
   color: #d70015;
-  font-size: 12px;
+  font-size: var(--font-size-sm);
 }
 
 .chip {
-  padding: 6px 12px;
+  padding: 6px var(--space-3);
   border: 0.5px solid rgba(0, 0, 0, 0.08);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.8);
   color: var(--chat-sub);
   font-weight: 500;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   transition:
     border-color 0.15s ease,
     color 0.15s ease,
@@ -1068,7 +1071,7 @@ async function handleLogout() {
   display: flex;
   align-items: flex-end;
   gap: 10px;
-  padding: 10px 10px 10px 16px;
+  padding: 10px 10px 10px var(--space-4);
   border: 0.5px solid rgba(0, 0, 0, 0.1);
   border-radius: 22px;
   background: #fff;
@@ -1140,7 +1143,7 @@ async function handleLogout() {
 }
 
 .workspace-scroll::-webkit-scrollbar-thumb {
-  border-radius: 99px;
+  border-radius: var(--radius-pill);
   background: rgba(0, 0, 0, 0.12);
 }
 
@@ -1175,7 +1178,7 @@ async function handleLogout() {
   }
 
   .messages__inner {
-    padding: 18px 16px 10px;
+    padding: 18px var(--space-4) 10px;
   }
 
   .msg__body {
@@ -1183,7 +1186,7 @@ async function handleLogout() {
   }
 
   .toolbar {
-    padding: 0 16px;
+    padding: 0 var(--space-4);
   }
 
   .toolbar__new {
@@ -1205,7 +1208,7 @@ async function handleLogout() {
   }
 
   .composer {
-    padding: 12px 14px 16px;
+    padding: var(--space-3) 14px var(--space-4);
   }
 }
 </style>

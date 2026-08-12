@@ -1,0 +1,93 @@
+.app-confirm.el-message-box {
+  width: min(400px, calc(100vw - 32px));
+  padding: 22px;
+  overflow: hidden;
+  border: 0.5px solid rgba(255, 255, 255, 0.82);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.18);
+  font-family: var(--font-family-system);
+  backdrop-filter: blur(36px) saturate(180%);
+  -webkit-backdrop-filter: blur(36px) saturate(180%);
+}
+
+.app-confirm .el-message-box__header {
+  padding: 0 28px 10px 0;
+}
+
+.app-confirm .el-message-box__title {
+  color: var(--color-text);
+  font-size: var(--font-size-md);
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.app-confirm .el-message-box__headerbtn {
+  top: 18px;
+  right: 18px;
+  width: 28px;
+  height: 28px;
+}
+
+.app-confirm .el-message-box__content {
+  padding: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-body);
+  line-height: 1.55;
+}
+
+.app-confirm .el-message-box__status {
+  font-size: 20px;
+}
+
+.app-confirm--warning .el-message-box__status {
+  color: var(--color-warning);
+}
+
+.app-confirm--danger .el-message-box__status {
+  color: var(--color-danger);
+}
+
+.app-confirm .el-message-box__btns {
+  gap: 10px;
+  padding: 22px 0 0;
+}
+
+.app-confirm .el-button {
+  min-width: 76px;
+  height: 36px;
+  margin-left: 0;
+  border-radius: var(--radius-control);
+  font-weight: 600;
+}
+
+.app-confirm .el-button--primary {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+
+.app-confirm .el-button--primary:hover,
+.app-confirm .el-button--primary:focus-visible {
+  border-color: var(--color-primary-hover);
+  background: var(--color-primary-hover);
+}
+
+.app-confirm--danger .el-button--primary {
+  border-color: var(--color-danger);
+  background: var(--color-danger);
+}
+
+.app-confirm--danger .el-button--primary:hover,
+.app-confirm--danger .el-button--primary:focus-visible {
+  border-color: var(--color-danger-hover);
+  background: var(--color-danger-hover);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .app-confirm.el-message-box {
+    background: #fff;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}

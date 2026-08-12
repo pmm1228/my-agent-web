@@ -80,28 +80,18 @@ async function handleSubmit() {
 
 <style scoped>
 .auth-page {
-  --auth-bg: #d7d8dc;
-  --auth-text: #1d1d1f;
-  --auth-sub: #6e6e73;
-  --auth-muted: #aeaeb2;
-  --auth-line: rgba(0, 0, 0, 0.08);
-  --auth-blue: #007aff;
-  --auth-blue-soft: rgba(0, 122, 255, 0.12);
-  --auth-shadow: 0 22px 70px rgba(0, 0, 0, 0.14);
-
   width: 100%;
   height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 28px;
+  padding: var(--page-padding);
   overflow: hidden;
   background:
     linear-gradient(135deg, rgba(116, 159, 255, 0.2), transparent 36%),
-    linear-gradient(315deg, rgba(255, 159, 120, 0.2), transparent 40%), var(--auth-bg);
-  color: var(--auth-text);
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', sans-serif;
+    linear-gradient(315deg, rgba(255, 159, 120, 0.2), transparent 40%), var(--color-page-background);
+  color: var(--color-text);
+  font-family: var(--font-family-system);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -109,9 +99,9 @@ async function handleSubmit() {
   width: min(100%, 420px);
   padding: 40px 36px 32px;
   border: 0.5px solid rgba(255, 255, 255, 0.72);
-  border-radius: 18px;
+  border-radius: var(--radius-panel);
   background: rgba(255, 255, 255, 0.5);
-  box-shadow: var(--auth-shadow);
+  box-shadow: var(--shadow-panel);
   backdrop-filter: blur(48px) saturate(190%);
   -webkit-backdrop-filter: blur(48px) saturate(190%);
 }
@@ -123,8 +113,8 @@ async function handleSubmit() {
 
 .eyebrow {
   margin: 0 0 8px;
-  color: var(--auth-blue);
-  font-size: 11px;
+  color: var(--color-primary);
+  font-size: var(--font-size-xs);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -132,16 +122,16 @@ async function handleSubmit() {
 
 .title {
   margin: 0 0 6px;
-  font-size: 24px;
+  font-size: var(--font-size-xl);
   font-weight: 700;
   letter-spacing: -0.01em;
 }
 
 .subtitle {
   margin: 0;
-  color: var(--auth-sub);
+  color: var(--color-text-secondary);
   font-size: 13px;
-  line-height: 1.5;
+  line-height: var(--line-height-normal);
 }
 
 .stack {
@@ -159,18 +149,18 @@ async function handleSubmit() {
 .field label {
   font-size: 12px;
   font-weight: 600;
-  color: var(--auth-sub);
+  color: var(--color-text-secondary);
   padding-left: 2px;
 }
 
 .field input {
   width: 100%;
   padding: 11px 14px;
-  border: 0.5px solid var(--auth-line);
-  border-radius: 10px;
+  border: 0.5px solid var(--color-border);
+  border-radius: var(--radius-control);
   background: rgba(255, 255, 255, 0.85);
-  color: var(--auth-text);
-  font-size: 14px;
+  color: var(--color-text);
+  font-size: var(--font-size-body);
   font-family: inherit;
   outline: none;
   transition:
@@ -179,30 +169,30 @@ async function handleSubmit() {
 }
 
 .field input::placeholder {
-  color: var(--auth-muted);
+  color: var(--color-text-muted);
 }
 
 .field input:focus {
-  border-color: var(--auth-blue);
-  box-shadow: 0 0 0 3px var(--auth-blue-soft);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
 }
 
 .error {
   margin: 4px 0 0;
-  color: #d70015;
-  font-size: 12px;
+  color: var(--color-danger-text);
+  font-size: var(--font-size-sm);
   text-align: center;
 }
 
 .primary-action {
   margin-top: 8px;
   width: 100%;
-  height: 40px;
+  height: var(--control-height);
   border: 0;
-  border-radius: 10px;
-  background: var(--auth-blue);
+  border-radius: var(--radius-control);
+  background: var(--color-primary);
   color: #fff;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
@@ -214,7 +204,7 @@ async function handleSubmit() {
 }
 
 .primary-action:hover:not(:disabled) {
-  background: #0077ed;
+  background: var(--color-primary-hover);
 }
 
 .primary-action:active:not(:disabled) {

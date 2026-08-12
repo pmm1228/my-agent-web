@@ -37,6 +37,8 @@ secrets. Use placeholders such as `<USER_API_KEY>` and environment variables suc
 
 ## UI Component Rules
 
+- For UI layout or styling work, read `references/design-system.md` and use the shared tokens in
+  `src/styles/tokens.css` before adding component-local values.
 - Reuse `element-plus`, which is already a project dependency.
 - Use `ElMessageBox.confirm` for destructive-action confirmation; set explicit Chinese title,
   confirm text, cancel text, and warning/danger styling.
@@ -47,6 +49,7 @@ secrets. Use placeholders such as `<USER_API_KEY>` and environment variables suc
 - Keep business state and API calls in Vue code. Treat dismissal as a normal return path and do
   not display it as an error.
 - Preserve accessibility: keep descriptive `aria-label` and `title` text on icon-only buttons.
+- Keep Element Plus theme mappings in `src/styles/element-plus.css`; never modify package files.
 
 ## Common Tasks
 

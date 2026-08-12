@@ -1,0 +1,71 @@
+:root {
+  /* Color */
+  --color-primary: #007aff;
+  --color-primary-hover: #0077ed;
+  --color-primary-soft: rgba(0, 122, 255, 0.12);
+  --color-danger: #ff3b30;
+  --color-danger-hover: #e63229;
+  --color-danger-text: #d70015;
+  --color-warning: #ff9500;
+  --color-success: #34c759;
+  --color-text: #1d1d1f;
+  --color-text-secondary: #6e6e73;
+  --color-text-muted: #aeaeb2;
+  --color-border: rgba(0, 0, 0, 0.08);
+  --color-page-background: #d7d8dc;
+  --color-surface: #fff;
+  --color-surface-glass: rgba(255, 255, 255, 0.58);
+  --color-surface-panel: rgba(255, 255, 255, 0.8);
+  --color-agent-bubble: #f2f2f7;
+
+  /* Spacing: use the 4px scale before introducing one-off values. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Typography */
+  --font-family-system:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', sans-serif;
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-caption: 13px;
+  --font-size-body: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 20px;
+  --font-size-xl: 24px;
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.65;
+
+  /* Shape and elevation */
+  --radius-sm: 8px;
+  --radius-control: 10px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-panel: 18px;
+  --radius-pill: 999px;
+  --shadow-panel: 0 22px 70px rgba(0, 0, 0, 0.14);
+  --glass-border: 0.5px solid rgba(255, 255, 255, 0.72);
+  --glass-filter: blur(48px) saturate(190%);
+
+  /* Semantic layout */
+  --page-padding: var(--space-7);
+  --panel-padding: var(--space-8);
+  --section-gap: var(--space-6);
+  --control-height: 40px;
+}
+
+@media (max-width: 640px) {
+  :root {
+    --page-padding: var(--space-4);
+    --panel-padding: var(--space-5);
+    --section-gap: var(--space-5);
+  }
+}
