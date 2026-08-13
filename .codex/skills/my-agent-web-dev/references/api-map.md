@@ -2,10 +2,11 @@
 
 Source of truth:
 
-- Backend routes: `my-agent/app/api/main.py`
-- Request/response schemas: `my-agent/app/api/schemas.py`
-- Auth dependencies: `my-agent/app/api/auth.py`
-- Extra behavior: `my-agent/app/api/routes.py`
+- App assembly: `my-agent/app/api/main.py`
+- Backend routes: `my-agent/app/api/routers/`
+- Request/response schemas: `my-agent/app/api/schemas/`
+- Auth dependencies: `my-agent/app/api/dependencies/auth.py`
+- Request handlers: `my-agent/app/api/handlers/`
 
 Use this file as the frontend contract guide. If backend code changes, update this reference.
 
@@ -24,17 +25,20 @@ Backend docs while running:
 
 ## Auth
 
-Most endpoints require:
+The browser application obtains a token from `POST /auth/login`. Most endpoints require:
 
 ```http
-X-API-Key: <USER_OR_ADMIN_API_KEY>
+Authorization: Bearer <ACCESS_TOKEN>
 ```
+
+The backend also accepts `X-API-Key: <USER_OR_ADMIN_API_KEY>` for compatibility with direct
+automation and smoke probes. Bearer authentication takes precedence when both headers are present.
 
 Auth outcomes:
 
 | Status | Meaning |
 |---|---|
-| `401` | Missing or invalid `X-API-Key` |
+| `401` | Missing, invalid, or expired Bearer token; or an invalid compatibility API key |
 | `403` | User is disabled, or endpoint requires admin and current user is not admin |
 | `503` | Database is not configured, so auth/user/history queries cannot run |
 
@@ -60,6 +64,46 @@ Response:
 ```
 
 Frontend use: backend availability indicator and first smoke check.
+
+### Login
+
+```http
+POST /auth/login
+Content-Type: application/json
+```
+
+Auth: none.
+
+Request:
+
+```json
+{
+  "username": "alice",
+  "password": "<PASSWORD>"
+}
+```
+
+Response:
+
+```json
+{
+  "access_token": "<ACCESS_TOKEN>",
+  "token_type": "bearer",
+  "expires_in": 3600,
+  "user": {
+    "id": "uuid",
+    "username": "alice",
+    "display_name": "Alice",
+    "role": "user",
+    "is_active": true,
+    "created_at": "2026-08-11T00:00:00Z",
+    "updated_at": "2026-08-11T00:00:00Z"
+  }
+}
+```
+
+Frontend use: validate username/password, initialize the auth store, and configure Bearer
+authentication for subsequent requests.
 
 ### Current User
 
@@ -125,7 +169,9 @@ Response:
       }
     }
   ],
-  "history_saved": true
+  "history_saved": true,
+  "status": "completed",
+  "confirmation": null
 }
 ```
 
@@ -136,6 +182,38 @@ Notes:
 - `history_saved=false` means the LLM response succeeded but permanent chat history persistence
   failed.
 - `tool_calls` can be empty.
+
+### Stream Agent Chat
+
+```http
+POST /chat/stream
+Accept: application/x-ndjson
+```
+
+Auth: user. Request fields match `POST /chat`.
+
+The response is an NDJSON stream containing `token`, `confirmation`, `done`, or `error` events.
+The final `done` event includes the same completion fields as `POST /chat`.
+
+### Confirm Web Access
+
+```http
+POST /chat/confirm
+```
+
+Auth: user.
+
+Request:
+
+```json
+{
+  "thread_id": "thread-id",
+  "approved": true
+}
+```
+
+Frontend use: resume a chat that emitted a `confirmation` event. The response uses the regular
+chat response shape and may require another confirmation.
 
 ### Chat Sessions
 
@@ -395,32 +473,38 @@ Notes:
 
 ## curl Examples
 
-Use placeholders; never store real keys in this file.
+Use placeholders; never store real credentials in this file.
 
 ```bash
 curl http://localhost:8000/health
 ```
 
 ```bash
+curl -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"alice","password":"<PASSWORD>"}'
+```
+
+```bash
 curl http://localhost:8000/me \
-  -H "X-API-Key: <USER_API_KEY>"
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
 ```
 
 ```bash
 curl -X POST http://localhost:8000/chat \
-  -H "X-API-Key: <USER_API_KEY>" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{"message":"你好"}'
 ```
 
 ```bash
 curl http://localhost:8000/chat/sessions \
-  -H "X-API-Key: <USER_API_KEY>"
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
 ```
 
 ```bash
 curl -X POST http://localhost:8000/users \
-  -H "X-API-Key: <ADMIN_API_KEY>" \
+  -H "Authorization: Bearer <ADMIN_ACCESS_TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{"username":"alice","display_name":"Alice"}'
 ```

@@ -7,143 +7,75 @@ Source of truth:
 - Auth store: `my-agent-web/src/stores/auth.ts`
 - Login page: `my-agent-web/src/views/LoginView.vue`
 - Chat shell: `my-agent-web/src/views/HomeView.vue`
+- Chat components: `my-agent-web/src/components/chat/`
+- Chat state: `my-agent-web/src/composables/useChatSessions.ts` and
+  `my-agent-web/src/composables/useChatStream.ts`
 - Router guard: `my-agent-web/src/router/index.ts`
 
-## Current Integration State
+## Current authentication flow
 
-Implemented:
+The browser application uses username/password login and Bearer tokens:
 
-- `requestJson<T>()` builds URLs from `VITE_API_BASE_URL` or `http://localhost:8000`.
-- `requestJson<T>()` sets `Accept: application/json`, serializes object bodies, sets
-  `Content-Type: application/json`, attaches `X-API-Key` when provided, and normalizes backend
-  errors into `ApiError`.
-- `fetchCurrentUser(apiKey)` calls `GET /me`.
-- Pinia auth store persists `{ apiKey, user }` in `localStorage` under `my-agent-web.auth`.
-- Router redirects unauthenticated users to `/login`.
-- Login page validates an API key through `GET /me`.
-- Chat services support JSON, NDJSON streaming, session history, and session deletion.
-- Destructive confirmation dialogs use `ElMessageBox.confirm` from Element Plus.
+1. `LoginView.vue` submits `username` and `password` to `POST /auth/login`.
+2. The response contains `access_token`, `expires_in`, and the current user.
+3. The Pinia auth store persists `{ accessToken, expiresAt, user }` in `localStorage` under
+   `my-agent-web.auth`.
+4. `setAuthToken()` makes the access token available to the shared request helper.
+5. `requestJson()` and `requestStream()` attach `Authorization: Bearer <ACCESS_TOKEN>` to
+   authenticated calls.
+6. The router redirects unauthenticated users to `/login` and preserves the requested path in the
+   `redirect` query parameter.
 
-Not yet implemented:
+The backend still accepts `X-API-Key` for compatibility with direct automation and smoke probes,
+but it is not the browser login flow and should not be added to page or store code.
 
-- Admin user management UI and service functions for `/users`.
-
-## Recommended Service Layout
-
-Add service modules without changing the shared request helper:
+## Chat architecture
 
 ```text
-my-agent-web/src/services/
-  api.ts          # keep shared requestJson and ApiError
-  auth.ts         # current user/login validation types
-  chat.ts         # chat request, sessions, messages
-  users.ts        # admin user management
+HomeView.vue                  # orchestration, routing, destructive confirmation
+  ChatSidebar.vue            # conversation navigation and deletion entry points
+    UserMenu.vue             # current user identity and logout
+  MessageList.vue            # empty state, suggestions, history, rendered messages
+  ChatComposer.vue           # draft input and send interaction
+
+useChatSessions.ts           # session list, active thread, loading and deletion state
+useChatStream.ts             # draft, visible messages, streaming and web confirmation state
 ```
 
-Use snake_case fields in TypeScript types to match backend JSON directly unless the app already
-introduces a mapping layer.
+Keep API calls and business state in the composables. Components should receive typed props and
+emit user intent. `HomeView.vue` coordinates the two state modules without duplicating their state.
 
-## Suggested Chat Types
+## Chat request flow
 
-```ts
-export type ChatRequest = {
-  message: string
-  thread_id?: string | null
-  system?: string | null
-}
+1. `useChatStream.sendMessage()` optimistically appends the user message and a pending assistant
+   message.
+2. `streamChatMessage()` calls `POST /chat/stream` and parses NDJSON events.
+3. On the first send, omit `thread_id`; persist the returned `thread_id` in
+   `useChatSessions.currentThreadId`.
+4. Later sends include the active `thread_id`.
+5. A `confirmation` event uses `POST /chat/confirm` after an Element Plus confirmation dialog.
+6. A completed response refreshes `GET /chat/sessions` so sidebar ordering and titles match the
+   persisted backend history.
+7. Selecting a sidebar item calls `GET /chat/sessions/{thread_id}/messages` and replaces the
+   visible message list.
+8. Deletion is confirmed in `HomeView.vue`, then `useChatSessions` calls
+   `DELETE /chat/sessions/{thread_id}`.
 
-export type ToolCall = {
-  name: string
-  args: Record<string, unknown>
-}
+## Service conventions
 
-export type ChatResponse = {
-  reply: string
-  thread_id: string
-  tool_calls: ToolCall[]
-  history_saved: boolean
-}
+- Reuse `requestJson()` and `requestStream()` from `src/services/api.ts`.
+- Do not pass tokens through every service function; the auth store configures the shared helper.
+- Keep backend snake_case fields in TypeScript types unless a dedicated mapping layer is added.
+- Encode `thread_id` when it appears in a URL path.
+- Treat `history_saved=false` as a persistence warning; do not discard a successful model reply.
 
-export type ChatSession = {
-  id: string
-  user_id: string
-  thread_id: string
-  title: string | null
-  created_at: string
-  updated_at: string
-}
+## Element Plus interaction rules
 
-export type ChatMessageRole = 'user' | 'assistant' | 'system' | 'tool'
+Import required Element Plus theme files once in `src/main.ts`. For destructive actions, provide
+explicit Chinese labels and warning/danger styling. Treat dismissal as a normal return path. Do not
+use browser-native `window.alert`, `window.confirm`, or `window.prompt`.
 
-export type ChatMessage = {
-  id: number
-  session_id: string
-  role: ChatMessageRole
-  content: string
-  tool_calls: ToolCall[]
-  created_at: string
-}
-```
-
-## Suggested Chat Service
-
-```ts
-import { requestJson } from './api'
-
-export function sendChat(apiKey: string, body: ChatRequest) {
-  return requestJson<ChatResponse>('/chat', {
-    method: 'POST',
-    apiKey,
-    body,
-  })
-}
-
-export function fetchChatSessions(apiKey: string, params = { limit: 100, offset: 0 }) {
-  return requestJson<ChatSessionListResponse>(
-    `/chat/sessions?limit=${params.limit}&offset=${params.offset}`,
-    { apiKey },
-  )
-}
-
-export function fetchChatMessages(
-  apiKey: string,
-  threadId: string,
-  params = { limit: 200, offset: 0 },
-) {
-  return requestJson<ChatMessageListResponse>(
-    `/chat/sessions/${encodeURIComponent(threadId)}/messages?limit=${params.limit}&offset=${params.offset}`,
-    { apiKey },
-  )
-}
-```
-
-## HomeView Wiring Notes
-
-When replacing static state in `HomeView.vue`:
-
-1. Keep `authStore.apiKey` as the only source for API auth.
-2. Track `currentThreadId: string | null`.
-3. On first send with no thread id, call `POST /chat` without `thread_id`; store the returned
-   `thread_id`.
-4. For later sends in the same conversation, include `thread_id`.
-5. Optimistically append the user message, show a pending assistant state, then replace it with
-   `reply`.
-6. If `history_saved=false`, show a non-blocking warning; do not discard the assistant reply.
-7. Refresh `/chat/sessions` after successful sends so the sidebar title/order matches backend
-   persistence.
-8. On selecting a sidebar session, call `/chat/sessions/{thread_id}/messages` and map backend roles
-   to the visible message list.
-9. Confirm deletion with `ElMessageBox.confirm`, then call `DELETE /chat/sessions/{thread_id}`.
-
-## Element Plus Interaction Rules
-
-Import the required Element Plus theme files once in `src/main.ts`; avoid loading the full theme
-for a small component subset. Import functions such as `ElMessageBox` directly where they are
-used. For destructive actions, provide explicit Chinese button labels, use warning/danger
-styling, and treat cancellation as a no-op. Do not use browser native `window.alert`,
-`window.confirm`, or `window.prompt`.
-
-## Local Debug Checklist
+## Local debug checklist
 
 Backend:
 
@@ -156,31 +88,42 @@ Frontend:
 
 ```bash
 cd my-agent-web
-VITE_API_BASE_URL=http://localhost:8000 npm run dev
+VITE_API_BASE_URL=http://localhost:8000 pnpm dev
 ```
 
-Smoke test from workspace root:
+Primary login check:
+
+```bash
+curl -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"<USERNAME>","password":"<PASSWORD>"}'
+
+curl http://localhost:8000/me \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
+Smoke probe with an already-issued Bearer token:
 
 ```bash
 MY_AGENT_API_BASE_URL=http://localhost:8000 \
-MY_AGENT_API_KEY=<USER_API_KEY> \
+MY_AGENT_ACCESS_TOKEN=<ACCESS_TOKEN> \
 node my-agent-web/.codex/skills/my-agent-web-dev/scripts/probe-api.mjs --chat "你好"
 ```
 
 Common failures:
 
-| Symptom | Likely Cause |
+| Symptom | Likely cause |
 |---|---|
-| Browser `TypeError` / cannot connect | Backend is not running or base URL is wrong |
-| `401` from `/me` | Missing or invalid API key |
-| `403` from `/me` | User exists but is disabled |
-| `503` from `/me` or history endpoints | Backend database is not configured |
-| `/health` fails during app startup | Missing required backend env, usually `DEEPSEEK_API_KEY` |
+| Browser `TypeError` / cannot connect | Backend is not running or the base URL is wrong |
+| `401` from `/auth/login` | Username or password is invalid |
+| `401` from `/me` or chat | Bearer token is missing, invalid, or expired |
+| `403` | The user is disabled, or the endpoint requires an admin |
+| `503` | The database is not configured |
 
-## Admin UI Notes
+## Admin UI notes
 
 Only expose `/users` screens to `authStore.user?.role === 'admin'`.
 
-Treat returned plaintext `api_key` from `POST /users` and `PATCH /users/{id}` with
-`reset_api_key=true` as one-time sensitive data. Show it once, avoid persisting it, and do not log
-it.
+The plaintext `api_key` returned by `POST /users` or by `PATCH /users/{id}` with
+`reset_api_key=true` is a one-time compatibility credential. Show it once, never persist it in the
+browser auth store, and do not log it.

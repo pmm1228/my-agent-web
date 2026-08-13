@@ -16,13 +16,15 @@ function readFlag(name, fallback = undefined) {
 function usage() {
   console.log(`Usage:
   MY_AGENT_API_BASE_URL=http://localhost:8000 \\
-  MY_AGENT_API_KEY=<USER_API_KEY> \\
+  MY_AGENT_ACCESS_TOKEN=<ACCESS_TOKEN> \\
   node my-agent-web/.codex/skills/my-agent-web-dev/scripts/probe-api.mjs --chat "你好"
 
 Environment:
   MY_AGENT_API_BASE_URL   Defaults to ${DEFAULT_BASE_URL}
-  MY_AGENT_API_KEY        Optional user key for /me and /chat
-  MY_AGENT_ADMIN_API_KEY  Optional admin key for /users smoke check
+  MY_AGENT_ACCESS_TOKEN        Preferred Bearer token for /me and /chat
+  MY_AGENT_API_KEY             Optional compatibility key for /me and /chat
+  MY_AGENT_ADMIN_ACCESS_TOKEN  Preferred admin Bearer token for /users
+  MY_AGENT_ADMIN_API_KEY       Optional compatibility admin key for /users
 
 Flags:
   --chat <message>        Message for POST /chat, defaults to "你好"
@@ -37,7 +39,9 @@ if (args.includes('--help')) {
 }
 
 const baseUrl = (process.env.MY_AGENT_API_BASE_URL || DEFAULT_BASE_URL).replace(/\/+$/, '')
+const accessToken = process.env.MY_AGENT_ACCESS_TOKEN || ''
 const userApiKey = process.env.MY_AGENT_API_KEY || ''
+const adminAccessToken = process.env.MY_AGENT_ADMIN_ACCESS_TOKEN || ''
 const adminApiKey = process.env.MY_AGENT_ADMIN_API_KEY || ''
 const chatMessage = readFlag('--chat', '你好')
 const threadId = readFlag('--thread-id', null)
@@ -47,12 +51,14 @@ function buildUrl(path) {
   return new URL(normalizedPath, `${baseUrl}/`).toString()
 }
 
-async function requestJson(path, { apiKey, method = 'GET', body } = {}) {
+async function requestJson(path, { token, apiKey, method = 'GET', body } = {}) {
   const headers = {
     Accept: 'application/json',
   }
 
-  if (apiKey) {
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  } else if (apiKey) {
     headers['X-API-Key'] = apiKey
   }
 
@@ -94,10 +100,13 @@ async function main() {
   const health = await requestJson('/health')
   ok('GET /health', health)
 
-  if (!userApiKey) {
-    console.log('SKIP GET /me and POST /chat: set MY_AGENT_API_KEY to enable authenticated checks')
+  if (!accessToken && !userApiKey) {
+    console.log(
+      'SKIP GET /me and POST /chat: set MY_AGENT_ACCESS_TOKEN to enable authenticated checks',
+    )
   } else {
-    const me = await requestJson('/me', { apiKey: userApiKey })
+    const auth = { token: accessToken, apiKey: userApiKey }
+    const me = await requestJson('/me', auth)
     ok('GET /me', {
       id: me.id,
       username: me.username,
@@ -114,7 +123,7 @@ async function main() {
 
     const chat = await requestJson('/chat', {
       method: 'POST',
-      apiKey: userApiKey,
+      ...auth,
       body: chatBody,
     })
     ok('POST /chat', {
@@ -125,7 +134,7 @@ async function main() {
     })
 
     const sessions = await requestJson('/chat/sessions?limit=5&offset=0', {
-      apiKey: userApiKey,
+      ...auth,
     })
     ok('GET /chat/sessions', {
       total: sessions.total,
@@ -133,10 +142,13 @@ async function main() {
     })
   }
 
-  if (!adminApiKey) {
-    console.log('SKIP GET /users: set MY_AGENT_ADMIN_API_KEY to enable admin check')
+  if (!adminAccessToken && !adminApiKey) {
+    console.log('SKIP GET /users: set MY_AGENT_ADMIN_ACCESS_TOKEN to enable admin check')
   } else {
-    const users = await requestJson('/users?limit=5&offset=0', { apiKey: adminApiKey })
+    const users = await requestJson('/users?limit=5&offset=0', {
+      token: adminAccessToken,
+      apiKey: adminApiKey,
+    })
     ok('GET /users', {
       total: users.total,
       returned: Array.isArray(users.items) ? users.items.length : 0,

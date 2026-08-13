@@ -13,7 +13,8 @@ Use this skill as the project-local onboarding and debugging guide for the two s
 - Frontend: `my-agent-web` (Vue 3, Vite, Pinia, Vue Router)
 
 Keep backend source as the authority when docs drift. Prefer `my-agent/app/api/main.py`,
-`my-agent/app/api/schemas.py`, and `my-agent/app/api/auth.py` over older README text.
+`my-agent/app/api/routers/`, `my-agent/app/api/schemas/`, and
+`my-agent/app/api/dependencies/auth.py` over older README text.
 
 ## Safety
 
@@ -23,8 +24,8 @@ placeholder examples.
 
 Do not add real API keys, `ADMIN_API_KEY`, user API keys, `.env` contents, database connection
 strings, JWT secrets, production hostnames, private IPs, cookies, tokens, or logs that include
-secrets. Use placeholders such as `<USER_API_KEY>` and environment variables such as
-`MY_AGENT_API_KEY`.
+secrets. Use placeholders such as `<ACCESS_TOKEN>` and environment variables such as
+`MY_AGENT_ACCESS_TOKEN`.
 
 ## Workflow
 
@@ -57,19 +58,21 @@ secrets. Use placeholders such as `<USER_API_KEY>` and environment variables suc
 
 Read `references/api-map.md` for the endpoint shape, then add typed service functions under
 `my-agent-web/src/services/`. Reuse `requestJson` from `my-agent-web/src/services/api.ts` so
-`VITE_API_BASE_URL`, `X-API-Key`, JSON serialization, and error normalization stay consistent.
+`VITE_API_BASE_URL`, Bearer authentication, JSON serialization, and error normalization stay
+consistent.
 
 ### Wire the chat UI
 
-Read `references/frontend-flow.md`. Replace static chat state in `HomeView.vue` with reactive
-state, call `POST /chat`, persist returned `thread_id`, and refresh history from
-`GET /chat/sessions` and `GET /chat/sessions/{thread_id}/messages` when needed.
+Read `references/frontend-flow.md`. Keep session/history state in `useChatSessions`, streaming
+message state in `useChatStream`, and let `HomeView.vue` compose the chat components. Persist the
+returned `thread_id` and refresh history from `GET /chat/sessions` and
+`GET /chat/sessions/{thread_id}/messages` when needed.
 
 ### Debug auth
 
-Check `GET /health` first because it is unauthenticated. Then check `GET /me` with
-`MY_AGENT_API_KEY`. A missing/invalid key returns 401, a disabled user returns 403, and missing
-database configuration returns 503.
+Check `GET /health` first because it is unauthenticated. Log in through `POST /auth/login`, then
+check `GET /me` with `Authorization: Bearer <ACCESS_TOKEN>`. A missing, invalid, or expired token
+returns 401, a disabled user returns 403, and missing database configuration returns 503.
 
 ### Run a smoke test
 
@@ -77,6 +80,9 @@ From the workspace root:
 
 ```bash
 MY_AGENT_API_BASE_URL=http://localhost:8000 \
-MY_AGENT_API_KEY=<USER_API_KEY> \
+MY_AGENT_ACCESS_TOKEN=<ACCESS_TOKEN> \
 node my-agent-web/.codex/skills/my-agent-web-dev/scripts/probe-api.mjs --chat "你好"
 ```
+
+`MY_AGENT_API_KEY` remains available only for backend compatibility and direct automation probes;
+the browser application uses username/password login and Bearer tokens.
